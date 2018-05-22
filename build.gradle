@@ -47,7 +47,7 @@ dependencies {
     compile('org.springframework.cloud:spring-cloud-starter-zipkin')
     
     // from jitpack
-    compile('com.github.symbiote-h2020:EnablerLogic:0.3.2')
+    compile('com.github.symbiote-h2020:EnablerLogic:0.4.0')
     // from local maven repository
     //compile('eu.h2020.symbiote:EnablerLogic:0.1.0-SNAPSHOT')	
     

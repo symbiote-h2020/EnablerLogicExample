@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.TimeZone;
 
@@ -25,11 +26,17 @@ import eu.h2020.symbiote.cloud.model.internal.CloudResource;
 import eu.h2020.symbiote.core.internal.CoreQueryRequest;
 import eu.h2020.symbiote.ele.model.MessageRequest;
 import eu.h2020.symbiote.ele.model.MessageResponse;
+import eu.h2020.symbiote.enabler.messaging.model.ActuatorExecutionTaskInfo;
 import eu.h2020.symbiote.enabler.messaging.model.EnablerLogicDataAppearedMessage;
 import eu.h2020.symbiote.enabler.messaging.model.NotEnoughResourcesAvailable;
+import eu.h2020.symbiote.enabler.messaging.model.PlatformProxyResourceInfo;
 import eu.h2020.symbiote.enabler.messaging.model.ResourceManagerAcquisitionStartResponse;
 import eu.h2020.symbiote.enabler.messaging.model.ResourceManagerTaskInfoRequest;
+import eu.h2020.symbiote.enabler.messaging.model.ResourceManagerTaskInfoResponse;
+import eu.h2020.symbiote.enabler.messaging.model.ResourceManagerTasksStatus;
 import eu.h2020.symbiote.enabler.messaging.model.ResourcesUpdated;
+import eu.h2020.symbiote.enabler.messaging.model.ServiceExecutionTaskInfo;
+import eu.h2020.symbiote.enabler.messaging.model.ServiceParameter;
 import eu.h2020.symbiote.enablerlogic.EnablerLogic;
 import eu.h2020.symbiote.enablerlogic.ProcessingLogic;
 import eu.h2020.symbiote.enablerlogic.messaging.RegistrationHandlerClientService;
@@ -88,8 +95,7 @@ public class ExampleLogic implements ProcessingLogic {
         //asyncCommunication();
         //syncCommunication();
 
-        //queryFixedStations();
-        //queryMobileStations();
+        queryParisTemperature();
     }
 
     private void registerRapConsumers() {
@@ -127,9 +133,9 @@ public class ExampleLogic implements ProcessingLogic {
 	                    Object objectValue = parameter.getValue();
 	                    Assert.isInstanceOf(Boolean.class, objectValue, "Parameter 'on' of capability 'OnOffCapability' should be boolean.");
 	                    if((Boolean) objectValue) {
-	                        LOG.debug("Turning on light {}", resourceId);
+	                        LOG.debug("*** Turning on AC {}", resourceId);
 	                    } else {
-	                        LOG.debug("Turning off light {}", resourceId);
+	                        LOG.debug("*** Turning off AC {}", resourceId);
 	                    }
 	                } else {
 	                	throw new RapPluginException(HttpStatus.NOT_FOUND.value(), "Actuator not found");
@@ -140,27 +146,28 @@ public class ExampleLogic implements ProcessingLogic {
             }
         });
         
-        rapPlugin.registerInvokingServiceListener(new InvokingServiceListener() {
+		rapPlugin.registerInvokingServiceListener(new InvokingServiceListener() {
 			
 			@Override
 			public Object invokeService(String resourceId, Map<String,Parameter> parameters) {
-                LOG.debug("invoking service {} parameters:{}", resourceId, parameters);
-                
-                try {
-	                if("el_isrid1".equals(resourceId)) {
-	                	Parameter parameter = parameters.get("inputParam1");
-	                    Assert.notNull(parameter, "Capability 'inputParam1' is required.");
-	                    Object objectValue = parameter.getValue();
-	                    Assert.isInstanceOf(String.class, objectValue, "Parameter 'inputParam1' should be string of length form 2-10.");
-	                    String value = (String) objectValue;
-                        LOG.debug("Invoking service {} with param {}.", resourceId, value);
-                        return "ok";
-	                } else {
-	                	throw new RapPluginException(HttpStatus.NOT_FOUND.value(), "Service not found");
-	                }
-                } catch (IllegalArgumentException e) {
-                	throw new RapPluginException(HttpStatus.BAD_REQUEST.value(), e.getMessage());
-                }
+		        LOG.debug("invoking service {} parameters:{}", resourceId, parameters);
+		        
+		        try {
+		            if("el_isrid1".equals(resourceId)) {
+		            	Parameter parameter = parameters.get("humidityTaget");
+		                Assert.notNull(parameter, "Capability 'humidityTaget' is required.");
+		                Object objectValue = parameter.getValue();
+		                Assert.isInstanceOf(String.class, objectValue, "Parameter 'humidityTaget' should be string of length form 2-10.");
+		                String value = (String) objectValue;
+		                LOG.debug("Invoking service {} with param {}.", resourceId, value);
+		                LOG.info("*** Humidity service target is {}", value);
+		                return "ok";
+		            } else {
+		            	throw new RapPluginException(HttpStatus.NOT_FOUND.value(), "Service not found");
+		            }
+		        } catch (IllegalArgumentException e) {
+		        	throw new RapPluginException(HttpStatus.BAD_REQUEST.value(), e.getMessage());
+		        }
 			}
 		});
     }
@@ -187,9 +194,9 @@ public class ExampleLogic implements ProcessingLogic {
         obsList.add(obsval);
         
         obsval = new ObservationValue(
-        		Integer.toString(new Random().nextInt(50) - 10), // random temp. 
+        		Integer.toString(new Random().nextInt(100)), // random humidity 
                 new Property("Humidity", "humidity_iri", Arrays.asList("Air humidity")), 
-                new UnitOfMeasurement("C", "degree Celsius", "celsius_iri", Arrays.asList("")));
+                new UnitOfMeasurement("%", "percent", "humidity_iri", Arrays.asList("")));
         obsList.add(obsval);
         
         Observation obs = new Observation(sensorId, loc, timestamp, samplet , obsList);
@@ -214,7 +221,7 @@ public class ExampleLogic implements ProcessingLogic {
         int i = 1;
         while(i < 10) {
             try {
-                LOG.debug("Atempting to register resources count {}.", i);
+                LOG.debug("Attempting to register resources count {}.", i);
                 rhClientService.registerResources(cloudResources);
                 LOG.debug("Resources registered");
                 break;
@@ -280,8 +287,8 @@ public class ExampleLogic implements ProcessingLogic {
         cloudResource.setResource(actuator);
         
         actuator.setLocatedAt(createLocation());
-        actuator.setName("Enabler Logic Example Light 1");
-        actuator.setDescription(Arrays.asList("This is light 1"));
+        actuator.setName("Enabler_Logic_Example_Aircondition_1");
+        actuator.setDescription(Arrays.asList("This is aircondition 1"));
         
         eu.h2020.symbiote.model.cim.Capability capability = new eu.h2020.symbiote.model.cim.Capability();
         actuator.setCapabilities(Arrays.asList(capability));
@@ -317,13 +324,13 @@ public class ExampleLogic implements ProcessingLogic {
         Service service = new Service();
         cloudResource.setResource(service);
         
-        service.setName("Enabler Logic Example Light service 1");
-        service.setDescription(Arrays.asList("This is light service 1 in Enabler Logic Example"));
+        service.setName("Enabler_Logic_Example_Humidity_service_1");
+        service.setDescription(Arrays.asList("This is humidity service 1 in Enabler Logic Example"));
         
         eu.h2020.symbiote.model.cim.Parameter parameter = new eu.h2020.symbiote.model.cim.Parameter();
         service.setParameters(Arrays.asList(parameter));
 
-        parameter.setName("inputParam1");
+        parameter.setName("humidityTaget");
         parameter.setMandatory(true);
         // restriction
         LengthRestriction restriction = new LengthRestriction();
@@ -333,7 +340,7 @@ public class ExampleLogic implements ProcessingLogic {
 		
 		PrimitiveDatatype datatype = new PrimitiveDatatype();
 		datatype.setArray(false);
-		datatype.setBaseDatatype("http://www.w3.org/2001/XMLSchema#string"); // "http:\/\/www.w3.org\/2001\/XMLSchema#string"
+		datatype.setBaseDatatype("http://www.w3.org/2001/XMLSchema#string");
 		parameter.setDatatype(datatype);
 
         service.setInterworkingServiceURL(props.getInterworkingInterfaceUrl());
@@ -370,52 +377,160 @@ public class ExampleLogic implements ProcessingLogic {
 
     @Override
     public void measurementReceived(EnablerLogicDataAppearedMessage dataAppeared) {
-        System.out.println("received new Observations:\n"+dataAppeared);
-    }
-    
-    private void queryFixedStations() {
-        ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest();
-        request.setTaskId("Vienna-Fixed");
-        request.setEnablerLogicName("interpolator");
-        request.setMinNoResources(1);
-        request.setCachingInterval("P0000-00-00T00:10:00"); // 10 mins.
-            // Although the sampling period is either 30 mins or 60 mins there is a transmit
-            // delay.
-            // If we miss one reading by just 1 second and we set the interval to 30 mins we
-            // are always 29 mins and 59 late.
-        CoreQueryRequest coreQueryRequest = new CoreQueryRequest();
-        coreQueryRequest.setLocation_lat(48.208174);
-        coreQueryRequest.setLocation_long(16.373819);
-        coreQueryRequest.setMax_distance(10_000); // radius 10km
-        coreQueryRequest.setObserved_property(Arrays.asList("NOx"));
-        request.setCoreQueryRequest(coreQueryRequest);
-        ResourceManagerAcquisitionStartResponse response = enablerLogic.queryResourceManager(request);
-
         try {
-            LOG.info("querying fixed resources: {}", new ObjectMapper().writeValueAsString(response));
+            LOG.info("Received new Observations: {}", new ObjectMapper().writeValueAsString(dataAppeared));
         } catch (JsonProcessingException e) {
-            LOG.error("Problem with deserializing ResourceManagerAcquisitionStartResponse", e);
+            LOG.error("Problem with deserializing EnablerLogicDataAppearedMessage", e);
         }
+        
+        temperatureLogic(dataAppeared);
+        humidityLogic(dataAppeared);
     }
 
-    private void queryMobileStations() {
-        
-        ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest();
-        request.setTaskId("Vienna-Mobile");
-        request.setEnablerLogicName("interpolator");
-        request.setMinNoResources(1);
-        request.setCachingInterval("P0000-00-00T00:01:00"); // 1 min
+	private void humidityLogic(EnablerLogicDataAppearedMessage dataAppeared) {
+		try {
+			LOG.info("Logic for Paris humidity");
+			dataAppeared.getObservations().get(0).getObsValues().stream()
+				.filter(obsValue -> obsValue.getObsProperty().getName().equalsIgnoreCase("humidity"))
+				.map(obsValue -> obsValue.getValue())
+				.forEach(tempValue -> {
+					int humidity = Integer.parseInt(tempValue);
+					if(humidity > 60 || humidity < 30)
+						turnOnHumidityService(40);
+					else
+						turnOffHumidityService();
+				});
+	    } catch (Exception e) {
+	    	LOG.error("Error in logic for Paris temp", e);
+	    }
+	}
+	
+	private void turnOffHumidityService() {
+		LOG.info("Turning OFF service");
+		setHumidityServiceTarget("OFF");
+	}
+	
+	private void turnOnHumidityService(int targetHumidity) {
+		LOG.info("Setting humidiy service to target {}.", targetHumidity);
+		setHumidityServiceTarget(String.valueOf(targetHumidity));
+	}
+	
+	private void setHumidityServiceTarget(String target) {
+		findHumidityService().ifPresent(resource -> {
+	    	LOG.info("Setting service {} to target {}", resource.getResourceId(), target);
+	    	enablerLogic.invokeService(new ServiceExecutionTaskInfo("humidityServiceTarget", 
+	    			resource, props.getEnablerName(),  
+	    			Arrays.asList(new ServiceParameter("humidityTaget", target))));
+		});
+	}
+	
+	private Optional<PlatformProxyResourceInfo> findHumidityService() {
+		CoreQueryRequest coreQueryRequest = new CoreQueryRequest();
+		coreQueryRequest.setName("Enabler_Logic_Example_Humidity_service_1");
+	
+	    ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest(
+	    		"humidityService", 1, 1, coreQueryRequest, 
+	    		null, //"P0000-00-00T00:01:00",
+	    		false, null, false, props.getEnablerName(), null);
+	
+	    ResourceManagerAcquisitionStartResponse response = enablerLogic.queryResourceManager(request);
+	
+	    try {
+			LOG.info("Response JSON: {}", new ObjectMapper().writeValueAsString(response));
+		} catch (JsonProcessingException e) {
+			LOG.info("Response: {}", response);
+		}
+	    
+	    if(response.getStatus() != ResourceManagerTasksStatus.SUCCESS) {
+	    	LOG.warn("Did not found humidity service!!!");
+	    	return Optional.empty();
+	    }
+	    	
+	    ResourceManagerTaskInfoResponse resourceManagerTaskInfoResponse = response.getTasks().get(0);
+		String resourceId = resourceManagerTaskInfoResponse.getResourceDescriptions().get(0).getId();
+		String accessURL = resourceManagerTaskInfoResponse.getResourceUrls().get(resourceId);
+		
+		PlatformProxyResourceInfo info = new PlatformProxyResourceInfo();
+		info.setAccessURL(accessURL);
+		info.setResourceId(resourceId);
+		return Optional.of(info);
+	}
 
+	private void temperatureLogic(EnablerLogicDataAppearedMessage dataAppeared) {
+		try {
+			LOG.info("Logic for Paris temp");
+			dataAppeared.getObservations().get(0).getObsValues().stream()
+				.filter(obsValue -> obsValue.getObsProperty().getName().equalsIgnoreCase("temperature"))
+				.map(obsValue -> obsValue.getValue())
+				.forEach(tempValue -> {
+					if(Integer.parseInt(tempValue) > 25)
+						actuateAirCondition(true);
+					else
+						actuateAirCondition(false);
+				});
+	    } catch (Exception e) {
+	    	LOG.error("Error in logic for Paris temp", e);
+	    }
+	}
+    
+	private void actuateAirCondition(boolean state) {
+		findAirConditionInfo().ifPresent(resource -> {
+	    	LOG.info("Actuating {} with state {}", resource.getResourceId(), state);
+	    	enablerLogic.triggerActuator(new ActuatorExecutionTaskInfo("triggerAirCondition", 
+	    			resource, props.getEnablerName(), "OnOffCapability", 
+	    			Arrays.asList(new ServiceParameter("on", state))));
+		});
+	}
+
+	private Optional<PlatformProxyResourceInfo> findAirConditionInfo() {
+		CoreQueryRequest coreQueryRequest = new CoreQueryRequest();
+		coreQueryRequest.setName("Enabler_Logic_Example_Aircondition_1");
+	
+	    ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest(
+	    		"airCondition", 1, 1, coreQueryRequest, 
+	    		null, //"P0000-00-00T00:01:00",
+	    		false, null, false, props.getEnablerName(), null);
+	
+	    ResourceManagerAcquisitionStartResponse response = enablerLogic.queryResourceManager(request);
+	
+	    try {
+			LOG.info("Response JSON: {}", new ObjectMapper().writeValueAsString(response));
+		} catch (JsonProcessingException e) {
+			LOG.info("Response: {}", response);
+		}
+	    
+	    if(response.getStatus() != ResourceManagerTasksStatus.SUCCESS) {
+	    	LOG.warn("Did not found aircondition actuator!!!");
+	    	return Optional.empty();
+	    }
+	    	
+	    ResourceManagerTaskInfoResponse resourceManagerTaskInfoResponse = response.getTasks().get(0);
+		String resourceId = resourceManagerTaskInfoResponse.getResourceDescriptions().get(0).getId();
+		String accessURL = resourceManagerTaskInfoResponse.getResourceUrls().get(resourceId);
+		
+		PlatformProxyResourceInfo info = new PlatformProxyResourceInfo();
+		info.setAccessURL(accessURL);
+		info.setResourceId(resourceId);
+		return Optional.of(info);
+	}
+
+	private void queryParisTemperature() {
+    	LOG.info("QUERY temperature in Paris");
         CoreQueryRequest coreQueryRequest = new CoreQueryRequest();
-        coreQueryRequest.setLocation_lat(48.208174);
-        coreQueryRequest.setLocation_long(16.373819);
+        coreQueryRequest.setLocation_long(2.349014);
+        coreQueryRequest.setLocation_lat(48.864716);
         coreQueryRequest.setMax_distance(10_000); // radius 10km
-        coreQueryRequest.setObserved_property(Arrays.asList("NOx"));
-        request.setCoreQueryRequest(coreQueryRequest);
-        ResourceManagerAcquisitionStartResponse response = enablerLogic.queryResourceManager(request);
+        coreQueryRequest.setObserved_property(Arrays.asList("temperature"));
 
+        ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest(
+        		"Paris-temp", 1, 1, coreQueryRequest, 
+        		"P0000-00-00T00:01:00", // 1 min
+        		false, null, true, props.getEnablerName(), null);
+
+        ResourceManagerAcquisitionStartResponse response = enablerLogic.queryResourceManager(request);
+        
         try {
-            LOG.info("querying mobile resources: {}", new ObjectMapper().writeValueAsString(response));
+            LOG.info("querying Paris temp resources: {}", new ObjectMapper().writeValueAsString(response));
         } catch (JsonProcessingException e) {
             LOG.error("Problem with deserializing ResourceManagerAcquisitionStartResponse", e);
         }
