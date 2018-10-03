@@ -6,8 +6,9 @@ buildscript {
         mavenCentral()
     }
     dependencies {
+        classpath "io.spring.gradle:dependency-management-plugin:1.0.0.RELEASE"
         classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
-    }
+        classpath group: 'com.cinnober.gradle', name: 'semver-git', version: '2.2.1'    }
 }
 
 // code
