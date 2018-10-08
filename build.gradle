@@ -56,7 +56,7 @@ dependencies {
     compile('org.springframework.boot:spring-boot-starter-aop')
     
     // from jitpack
-    compile('com.github.symbiote-h2020:EnablerLogic:0.4.0')
+    compile('com.github.symbiote-h2020:EnablerLogic:0.4.3')
     // from local maven repository
     //compile('eu.h2020.symbiote:EnablerLogic:0.1.0-SNAPSHOT')	
     
