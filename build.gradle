@@ -1,6 +1,7 @@
 buildscript {
     ext {
         springBootVersion = '1.5.14.RELEASE'
+        springCloudVersion = 'Dalston.SR5'
     }
     repositories {
         mavenCentral()
@@ -8,7 +9,8 @@ buildscript {
     dependencies {
         classpath "io.spring.gradle:dependency-management-plugin:1.0.0.RELEASE"
         classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
-        classpath group: 'com.cinnober.gradle', name: 'semver-git', version: '2.2.1'    }
+        classpath group: 'com.cinnober.gradle', name: 'semver-git', version: '2.2.1'    
+    }
 }
 
 // code
@@ -37,7 +39,7 @@ repositories {
 // Spring related configs
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Dalston.SR5"
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
     }
 }
 
@@ -56,7 +58,8 @@ dependencies {
     compile('org.springframework.boot:spring-boot-starter-aop')
     
     // from jitpack
-    compile('com.github.symbiote-h2020:EnablerLogic:0.4.3')
+    compile('com.github.symbiote-h2020:EnablerLogic:0.4+')
+    
     // from local maven repository
     //compile('eu.h2020.symbiote:EnablerLogic:0.1.0-SNAPSHOT')	
     
