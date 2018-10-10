@@ -15,6 +15,7 @@ import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -42,9 +43,6 @@ import eu.h2020.symbiote.enablerlogic.ProcessingLogic;
 import eu.h2020.symbiote.enablerlogic.messaging.RegistrationHandlerClientService;
 import eu.h2020.symbiote.enablerlogic.messaging.properties.EnablerLogicProperties;
 import eu.h2020.symbiote.model.cim.Actuator;
-import eu.h2020.symbiote.model.cim.Datatype;
-import eu.h2020.symbiote.model.cim.Effect;
-import eu.h2020.symbiote.model.cim.EnumRestriction;
 import eu.h2020.symbiote.model.cim.FeatureOfInterest;
 import eu.h2020.symbiote.model.cim.LengthRestriction;
 import eu.h2020.symbiote.model.cim.Location;
@@ -52,7 +50,6 @@ import eu.h2020.symbiote.model.cim.Observation;
 import eu.h2020.symbiote.model.cim.ObservationValue;
 import eu.h2020.symbiote.model.cim.PrimitiveDatatype;
 import eu.h2020.symbiote.model.cim.Property;
-import eu.h2020.symbiote.model.cim.Restriction;
 import eu.h2020.symbiote.model.cim.Service;
 import eu.h2020.symbiote.model.cim.StationarySensor;
 import eu.h2020.symbiote.model.cim.UnitOfMeasurement;
@@ -65,7 +62,6 @@ import eu.h2020.symbiote.rapplugin.messaging.rap.RapPlugin;
 import eu.h2020.symbiote.rapplugin.messaging.rap.RapPluginException;
 import eu.h2020.symbiote.rapplugin.messaging.rap.ReadingResourceListener;
 import eu.h2020.symbiote.security.accesspolicies.common.AccessPolicyType;
-import eu.h2020.symbiote.security.accesspolicies.common.IAccessPolicySpecifier;
 import eu.h2020.symbiote.security.accesspolicies.common.singletoken.SingleTokenAccessPolicySpecifier;
 import eu.h2020.symbiote.security.commons.exceptions.custom.InvalidArgumentsException;
 
@@ -83,6 +79,9 @@ public class ExampleLogic implements ProcessingLogic {
     
     @Autowired
     private RapPlugin rapPlugin;
+
+    @Value("${platform.id}")
+    private String myPlatformId;
 
     @Override
     public void initialization(EnablerLogic enablerLogic) {
@@ -154,10 +153,10 @@ public class ExampleLogic implements ProcessingLogic {
 		        
 		        try {
 		            if("el_isrid1".equals(resourceId)) {
-		            	Parameter parameter = parameters.get("humidityTaget");
-		                Assert.notNull(parameter, "Capability 'humidityTaget' is required.");
+		            	Parameter parameter = parameters.get("humidityTarget");
+		                Assert.notNull(parameter, "Capability 'humidityTarget' is required.");
 		                Object objectValue = parameter.getValue();
-		                Assert.isInstanceOf(String.class, objectValue, "Parameter 'humidityTaget' should be string of length form 2-10.");
+		                Assert.isInstanceOf(String.class, objectValue, "Parameter 'humidityTarget' should be string of length form 2-10.");
 		                String value = (String) objectValue;
 		                LOG.debug("Invoking service {} with param {}.", resourceId, value);
 		                LOG.info("*** Humidity service target is {}", value);
@@ -330,7 +329,7 @@ public class ExampleLogic implements ProcessingLogic {
         eu.h2020.symbiote.model.cim.Parameter parameter = new eu.h2020.symbiote.model.cim.Parameter();
         service.setParameters(Arrays.asList(parameter));
 
-        parameter.setName("humidityTaget");
+        parameter.setName("humidityTarget");
         parameter.setMandatory(true);
         // restriction
         LengthRestriction restriction = new LengthRestriction();
@@ -383,6 +382,11 @@ public class ExampleLogic implements ProcessingLogic {
             LOG.error("Problem with deserializing EnablerLogicDataAppearedMessage", e);
         }
         
+        if(dataAppeared.getObservations().isEmpty()) {
+            LOG.warn("Received measurement data that is empty.");
+            return;
+        }
+        
         temperatureLogic(dataAppeared);
         humidityLogic(dataAppeared);
     }
@@ -420,13 +424,14 @@ public class ExampleLogic implements ProcessingLogic {
 	    	LOG.info("Setting service {} to target {}", resource.getResourceId(), target);
 	    	enablerLogic.invokeService(new ServiceExecutionTaskInfo("humidityServiceTarget", 
 	    			resource, props.getEnablerName(),  
-	    			Arrays.asList(new ServiceParameter("humidityTaget", target))));
+	    			Arrays.asList(new ServiceParameter("humidityTarget", target))));
 		});
 	}
 	
 	private Optional<PlatformProxyResourceInfo> findHumidityService() {
 		CoreQueryRequest coreQueryRequest = new CoreQueryRequest();
 		coreQueryRequest.setName("Enabler_Logic_Example_Humidity_service_1");
+		coreQueryRequest.setPlatform_id(myPlatformId); // this is only for this example
 	
 	    ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest(
 	    		"humidityService", 1, 1, coreQueryRequest, 
@@ -485,6 +490,7 @@ public class ExampleLogic implements ProcessingLogic {
 	private Optional<PlatformProxyResourceInfo> findAirConditionInfo() {
 		CoreQueryRequest coreQueryRequest = new CoreQueryRequest();
 		coreQueryRequest.setName("Enabler_Logic_Example_Aircondition_1");
+		coreQueryRequest.setPlatform_id(myPlatformId); // this is only for this example
 	
 	    ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest(
 	    		"airCondition", 1, 1, coreQueryRequest, 
@@ -520,6 +526,7 @@ public class ExampleLogic implements ProcessingLogic {
         coreQueryRequest.setLocation_long(2.349014);
         coreQueryRequest.setLocation_lat(48.864716);
         coreQueryRequest.setMax_distance(10_000); // radius 10km
+        coreQueryRequest.setPlatform_id(myPlatformId); // this make sense only for testing
         coreQueryRequest.setObserved_property(Arrays.asList("temperature"));
 
         ResourceManagerTaskInfoRequest request = new ResourceManagerTaskInfoRequest(
@@ -538,13 +545,11 @@ public class ExampleLogic implements ProcessingLogic {
 
     @Override
     public void notEnoughResources(NotEnoughResourcesAvailable notEnoughResourcesAvailable) {
-        // TODO Auto-generated method stub
-        
+        LOG.debug("Not enough resources");        
     }
 
     @Override
     public void resourcesUpdated(ResourcesUpdated resourcesUpdated) {
-        // TODO Auto-generated method stub
-        
+        LOG.debug("Resources updated from Enabler Resource Manager");
     }
 }
