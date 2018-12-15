@@ -3,7 +3,7 @@ FROM openjdk:8-jre-alpine
 WORKDIR /home
 
 ENV componentName "EnablerLogicExample"
-ENV componentVersion 1.2.1
+ENV componentVersion 1.2.2
 
 RUN apk --no-cache add \
 	git \
